@@ -183,5 +183,33 @@ describe('PrefsMenu', () => {
         expect(screen.getByText('修改密码')).toBeInTheDocument();
       });
     });
+
+    it('shows the enter-sends toggle defaulting to off', async () => {
+      const user = userEvent.setup();
+      render(<PrefsMenu isAdmin={true} />);
+
+      await user.click(screen.getByTitle('偏好设置（时区 / 主题）'));
+
+      await waitFor(() => {
+        expect(screen.getByText('回车发送')).toBeInTheDocument();
+      });
+    });
+
+    it('toggles the enter-sends preference and persists it', async () => {
+      const user = userEvent.setup();
+      render(<PrefsMenu isAdmin={true} />);
+
+      await user.click(screen.getByTitle('偏好设置（时区 / 主题）'));
+      await waitFor(() => expect(screen.getByText('回车发送')).toBeInTheDocument());
+
+      const label = screen.getByText('回车发送');
+      const toggle = label.closest('.flex')!.querySelector('button')!;
+      await user.click(toggle);
+
+      expect(localStorage.getItem('ccm-enter-sends')).toBe('true');
+
+      await user.click(toggle);
+      expect(localStorage.getItem('ccm-enter-sends')).toBe('false');
+    });
   });
 });

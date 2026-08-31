@@ -12,6 +12,7 @@ import { ListFilter, Syringe } from '../icons';
 import { FastModeBadge, TaskConfigBadge } from '../Tasks/TaskBadges';
 import { ExpandableText } from '../ExpandableText';
 import { formatMessageTime } from '../../config/timezone';
+import { getEnterSends, subscribeEnterSends } from '../../config/enterSends';
 import { useFileDrop } from '../../hooks/useFileDrop';
 import { useFileUpload } from '../../hooks/useFileUpload';
 import { SubAgentIndicator } from './SubAgentIndicator';
@@ -249,6 +250,9 @@ export function ChatView({ task, projects, onBack, onTaskUpdated, onTaskForked, 
   const [codexMonitorEnabled, setCodexMonitorEnabled] = useState<boolean | null>(null);
   const [injecting, setInjecting] = useState(false);
   const injectingRef = useRef(false);
+  // Enter-sends preference: when true, plain Enter sends; when false (default), Ctrl/⌘+Enter sends.
+  const [enterSends, setEnterSendsState] = useState(getEnterSends);
+  useEffect(() => subscribeEnterSends(() => setEnterSendsState(getEnterSends())), []);
   // 注入模式开关：开启后「发送」直达当前 turn，而不是排队新 turn。
   const [injectMode, setInjectMode] = useState(false);
   const canInject = task.worker_id == null && task.shared_from_id == null && (
@@ -1767,7 +1771,13 @@ export function ChatView({ task, projects, onBack, onTaskUpdated, onTaskForked, 
   ) => handleSend(text, true, uploadResults, planTaskIds);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !e.nativeEvent.isComposing) {
+    if (e.nativeEvent.isComposing) return;
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      handleSend();
+      return;
+    }
+    if (e.key === 'Enter' && enterSends && !e.shiftKey) {
       e.preventDefault();
       handleSend();
     }
@@ -2860,8 +2870,8 @@ export function ChatView({ task, projects, onBack, onTaskUpdated, onTaskForked, 
               title={fileUpload.hasFailed
                 ? 'Retry or remove failed attachments before sending'
                 : injectMode && canInject
-                ? (isProcessing ? '注入到运行中的 turn (Ctrl+Enter)' : '注入模式：仅在 turn 运行中可用，空闲时请关闭注入模式')
-                : isProcessing ? 'Add to queue (Ctrl+Enter)' : 'Send (Ctrl+Enter)'}
+                ? (isProcessing ? `注入到运行中的 turn (${enterSends ? 'Enter' : 'Ctrl+Enter'})` : '注入模式：仅在 turn 运行中可用，空闲时请关闭注入模式')
+                : isProcessing ? `Add to queue (${enterSends ? 'Enter' : 'Ctrl+Enter'})` : `Send (${enterSends ? 'Enter' : 'Ctrl+Enter'})`}
               className={`p-2.5 text-white rounded-xl transition-colors disabled:opacity-40 disabled:cursor-not-allowed shadow-md ${
                 injectMode && canInject ? 'bg-teal-600 hover:bg-teal-700 shadow-teal-600/20'
                 : isProcessing ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/20' : 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-600/25'
