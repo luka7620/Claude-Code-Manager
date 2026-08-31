@@ -2155,3 +2155,112 @@ describe('independent Plan attachments', () => {
     expect(api.sendTaskChat).not.toHaveBeenCalled();
   });
 });
+
+describe('Enter-sends preference', () => {
+  const projects: Project[] = [];
+  const onBack = vi.fn();
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorage.clear();
+    (api.getTaskChatHistory as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+    (api.getAskUserPending as ReturnType<typeof vi.fn>).mockResolvedValue({ pending: [] });
+    (api.listRelatedPlans as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+    (api.getRuntimeSettings as ReturnType<typeof vi.fn>).mockResolvedValue({
+      use_pty_mode: false,
+      pty_available: false,
+      codex_app_server_enabled: true,
+      codex_main_mcp_enabled: true,
+      codex_monitor_enabled: true,
+    });
+  });
+
+  it('does not send on plain Enter when the preference is off (default)', async () => {
+    render(
+      <ChatView task={makeTask()} projects={projects} onBack={onBack} />,
+    );
+    const textarea = screen.getByRole('textbox');
+    fireEvent.change(textarea, { target: { value: 'should not send' } });
+    fireEvent.keyDown(textarea, { key: 'Enter' });
+
+    await waitFor(() => {
+      expect(api.sendTaskChat).not.toHaveBeenCalled();
+    });
+  });
+
+  it('sends on plain Enter when the preference is enabled', async () => {
+    localStorage.setItem('ccm-enter-sends', 'true');
+    render(
+      <ChatView task={makeTask()} projects={projects} onBack={onBack} />,
+    );
+    const textarea = screen.getByRole('textbox');
+    fireEvent.change(textarea, { target: { value: 'enter send' } });
+    fireEvent.keyDown(textarea, { key: 'Enter' });
+
+    await waitFor(() => {
+      expect(api.sendTaskChat).toHaveBeenCalledWith(
+        expect.anything(),
+        'enter send',
+        undefined,
+        undefined,
+        null,
+        expect.objectContaining({ provider: 'claude' }),
+      );
+    });
+  });
+
+  it('still sends on Ctrl+Enter regardless of the preference', async () => {
+    render(
+      <ChatView task={makeTask()} projects={projects} onBack={onBack} />,
+    );
+    const textarea = screen.getByRole('textbox');
+    fireEvent.change(textarea, { target: { value: 'ctrl send' } });
+    fireEvent.keyDown(textarea, { key: 'Enter', ctrlKey: true });
+
+    await waitFor(() => {
+      expect(api.sendTaskChat).toHaveBeenCalledWith(
+        expect.anything(),
+        'ctrl send',
+        undefined,
+        undefined,
+        null,
+        expect.objectContaining({ provider: 'claude' }),
+      );
+    });
+  });
+
+  it('inserts a newline on Shift+Enter even when enter-sends is on', async () => {
+    localStorage.setItem('ccm-enter-sends', 'true');
+    render(
+      <ChatView task={makeTask()} projects={projects} onBack={onBack} />,
+    );
+    const textarea = screen.getByRole('textbox');
+    fireEvent.change(textarea, { target: { value: 'line one' } });
+    fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: true });
+
+    await waitFor(() => {
+      expect(api.sendTaskChat).not.toHaveBeenCalled();
+    });
+  });
+
+  it('shows Enter shortcut in send button title when preference is on', async () => {
+    localStorage.setItem('ccm-enter-sends', 'true');
+    render(
+      <ChatView task={makeTask()} projects={projects} onBack={onBack} />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTitle('Send (Enter)')).toBeInTheDocument();
+    });
+  });
+
+  it('shows Ctrl+Enter shortcut in send button title when preference is off', async () => {
+    render(
+      <ChatView task={makeTask()} projects={projects} onBack={onBack} />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTitle('Send (Ctrl+Enter)')).toBeInTheDocument();
+    });
+  });
+});

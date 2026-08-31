@@ -6,6 +6,7 @@ import { getTheme, setTheme as persistTheme, THEME_OPTIONS, type Theme } from '.
 import { getCustomColors, setCustomColors, hasBgImage, getBgVisible, setBgVisible } from '../../config/customTheme';
 import { importBgImage, clearBgImage } from '../../config/customBg';
 import { getTimezone, setTimezone, TIMEZONE_OPTIONS } from '../../config/timezone';
+import { getEnterSends, setEnterSends } from '../../config/enterSends';
 
 /** 顶栏齿轮下拉：时区 / 主题 / PTY / 访问置顶 / 压缩阈值 / 飞书 / 密码 / 退出。
  * 低频设置集中收纳，保持顶栏精简。 */
@@ -17,6 +18,7 @@ export function PrefsMenu({ isAdmin }: { isAdmin: boolean }) {
   const [bgVisible, setBgVisibleState] = useState(getBgVisible());
   const bgInputRef = useRef<HTMLInputElement>(null);
   const [tz, setTz] = useState(getTimezone());
+  const [enterSendsOn, setEnterSendsOn] = useState(getEnterSends());
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -185,6 +187,20 @@ export function PrefsMenu({ isAdmin }: { isAdmin: boolean }) {
                 <option key={opt.value} value={opt.value}>{opt.label}</option>
               ))}
             </select>
+          </div>
+          <div className="flex items-center justify-between gap-3">
+            <span
+              className="text-xs text-gray-400"
+              title={enterSendsOn ? '回车直接发送消息，Shift+Enter 换行' : '回车换行，Ctrl/⌘+Enter 发送'}
+            >
+              回车发送
+            </span>
+            <button
+              onClick={() => { const next = !enterSendsOn; setEnterSends(next); setEnterSendsOn(next); }}
+              className={toggleCls(enterSendsOn)}
+            >
+              <span className={knobCls(enterSendsOn)} />
+            </button>
           </div>
           <div className="flex items-center justify-between gap-3">
             <span className="text-xs text-gray-400 flex items-center gap-1.5"><Palette size={13} /> 主题</span>
